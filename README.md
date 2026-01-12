@@ -19,13 +19,12 @@
 
 ## 应用架构图
 
-参见架构图源文件： [assets/zhaojing.drawio](./assets/zhaojing.drawio)
+参见架构图源文件：
+[assets/zhaojing.drawio](./assets/zhaojing.drawio)
 
 提示：如需在 README 中直接展示为图片，请在 Draw.io 内将该文件导出为 PNG/SVG 并保存为 `assets/zhaojing.png` 或 `assets/zhaojing.svg`，然后在此处插入：
 
-```markdown
 ![应用架构图](./assets/zhaojing.png)
-```
 
 ## 项目结构
 
