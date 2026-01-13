@@ -3,7 +3,6 @@
 @tailwind utilities;
 
 @layer base {
-
   #shadow-container,
   :root {
     --background: 0 0% 100%;
@@ -59,16 +58,10 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
-
 }
 
 @layer base {
   * {
     border-color: hsl(var(--border));
-  }
-
-  body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }

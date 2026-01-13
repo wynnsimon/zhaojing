@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "~components/ui/card";
-import { Button } from "~components/ui/button";
 import { RRWebPlayer } from "~components/RRWebPlayer";
 import {
   getAllRecordings,
   deleteRecording,
   type Recording,
 } from "~lib/indexeddb";
-import "./style.css";
+import "@/style/style.css";
+import "@/style/options.css";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "~components/ui/resizable";
+import RecordList from "~components/RecordList";
+import { Toaster } from "~components/ui/sonner";
+import { formatDate } from "~lib/utils";
 
 function IndexOptions() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
@@ -33,104 +41,95 @@ function IndexOptions() {
     loadRecordings();
   }, []);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("确定要删除这条录制记录吗？")) return;
-
+  const handleDelete = async (record: Recording) => {
     try {
-      await deleteRecording(id);
-      if (selectedRecording?.id === id) {
+      await deleteRecording(record.id);
+      if (selectedRecording?.id === record.id) {
         setSelectedRecording(null);
       }
       await loadRecordings();
     } catch (error) {
       console.error("删除失败:", error);
+      throw error;
     }
   };
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString("zh-CN");
-  };
-
-  const formatDuration = (duration: number) => {
-    const seconds = Math.floor(duration / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  const handleDownload = async (record: Recording) => {
+    const name = `record_${record.id}_${new Date(record.timestamp)
+      .toISOString()
+      .replace(/[:.]/g, "-")}.json`;
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          {
+            id: record.id,
+            timestamp: record.timestamp,
+            url: record.url,
+            duration: record.duration,
+            records: record.records,
+          },
+          null,
+          2
+        ),
+      ],
+      { type: "application/json" }
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* 左侧列表 */}
-      <div className="w-96 bg-white border-r border-gray-200 overflow-y-auto">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-6">录制记录</h1>
-
-          {loading ? (
-            <div className="text-center text-gray-500 py-8">加载中...</div>
-          ) : recordings.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">暂无录制记录</div>
-          ) : (
-            <div className="space-y-3">
-              {recordings.map((recording) => (
-                <Card
-                  key={recording.id}
-                  className={`cursor-pointer transition-all hover:shadow-md ${
-                    selectedRecording?.id === recording.id
-                      ? "border-blue-500 bg-blue-50"
-                      : ""
-                  }`}
-                  onClick={() => setSelectedRecording(recording)}
-                >
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium">
-                      {formatDate(recording.timestamp)}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <p className="text-xs text-gray-600 truncate">
-                      {recording.url}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">
-                        时长：{formatDuration(recording.duration)}
-                      </span>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(recording.id!);
-                        }}
-                      >
-                        删除
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+    <>
+      <ResizablePanelGroup className="border rounded-lg w-full h-full">
+        <ResizablePanel defaultSize={20} className="flex flex-col h-full">
+          <div className="flex items-center justify-between min-h-[3.25rem] px-4 border-b bg-slate-50">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                Records
+              </p>
+              <h4 className="text-xl font-semibold tracking-tight text-slate-900">
+                录制列表
+              </h4>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* 右侧播放器 */}
-      <div className="flex-1 p-6">
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle>
-              {selectedRecording
-                ? `播放：${formatDate(selectedRecording.timestamp)}`
-                : "录制回放"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="h-[calc(100%-5rem)]">
-            <RRWebPlayer
-              events={selectedRecording?.records || []}
+          </div>
+          <div className="flex-1 min-h-0 p-2">
+            <RecordList
+              records={recordings}
+              className="h-full w-full"
+              onSelect={setSelectedRecording}
+              onDelete={handleDelete}
+              onDownload={handleDownload}
+              selectedId={selectedRecording?.id ?? null}
             />
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+          </div>
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel defaultSize={80}>
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Replay
+                </p>
+                {selectedRecording
+                  ? `播放：${formatDate(selectedRecording.timestamp)}`
+                  : "录制回放"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="h-[calc(100%-5rem)]">
+              <RRWebPlayer events={selectedRecording?.records || []} />
+            </CardContent>
+          </Card>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+      <Toaster />
+    </>
   );
 }
 

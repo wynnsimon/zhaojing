@@ -46,5 +46,9 @@ export const RRWebPlayer = ({ events }: RRWebPlayerProps) => {
     );
   }
 
-  return <div ref={containerRef} className="w-full h-full" />;
+  return (
+    <div className="w-full h-full flex justify-center overflow-auto">
+      <div ref={containerRef} className="inline-flex" />
+    </div>
+  );
 };

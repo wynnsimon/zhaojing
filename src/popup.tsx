@@ -1,18 +1,22 @@
 import { Button } from "~components/ui/button";
-import "./style.css";
+import "@/style/style.css";
 import { useEffect, useState, type FC } from "react";
 import type { Action } from "~common";
 import { Card } from "~components/ui/card";
+import { Speaker, SquareArrowOutUpRight } from "lucide-react";
+import { ButtonGroup } from "~components/ui/button-group";
 
 const IndexPopup: FC = () => {
   const [flag, setFlag] = useState(false);
   const [curTab, setCurTab] = useState<chrome.tabs.Tab | undefined>();
 
   const init = async () => {
-    const tab =( await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    }))[0];
+    const tab = (
+      await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      })
+    )[0];
     if (tab) {
       setCurTab(tab);
     }
@@ -47,28 +51,35 @@ const IndexPopup: FC = () => {
   return (
     <Card className="w-60 rounded-lg shadow-lg">
       <div className="p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-          昭景
-        </h2>
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+            ZhaoJing
+          </p>
+          <h4 className="text-xl font-semibold tracking-tight text-slate-900">
+            昭景-Web录制与回放
+          </h4>
+        </div>
 
-        <Button
-          onClick={() => toggle("SET")}
-          className={`w-full py-3 font-semibold transition-all duration-300 ${
-            flag
-              ? "bg-red-500 hover:bg-red-600 text-white"
-              : "bg-green-500 hover:bg-green-600 text-white"
-          }`}
-        >
-          {flag ? "停止录制" : "开始录制"}
-        </Button>
+        <ButtonGroup  orientation="vertical" className="mt-4 flex w-full">
+          <Button
+            onClick={() => toggle("SET")}
+            className={`${
+              flag
+                ? "bg-red-500 hover:bg-red-600 text-white"
+                : "bg-green-500 hover:bg-green-600 text-white"
+            }`}
+          >
+            <Speaker />{flag ? "停止录制" : "开始录制"}
+          </Button>
 
-        <Button
-          onClick={() => chrome.runtime.openOptionsPage()}
-          variant="outline"
-          className="w-full mt-3 py-3"
-        >
-          查看录制记录
-        </Button>
+          <Button
+            onClick={() => chrome.runtime.openOptionsPage()}
+            variant="outline"
+          >
+            <SquareArrowOutUpRight />
+            查看记录
+          </Button>
+        </ButtonGroup>
       </div>
     </Card>
   );

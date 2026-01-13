@@ -1,51 +1,30 @@
-# 昭景 (Zhaojing) - 页面录制与回放工具
 
-一个功能强大的 Chrome 扩展，可以录制网页用户操作并实现完整的回放功能。基于 [rrweb](https://www.rrweb.io/) 库，提供高精度的网页交互录制。
+## 项目简介
 
-## 功能特性
+昭景是一款基于 Plasmo 的浏览器扩展，用于在任意页面上进行 rrweb 录制并在本地 IndexedDB 中保存回放记录。通过弹窗页控制录制状态，内容脚本负责实际录制，Service Worker 将录制数据持久化，配置页提供记录管理与回放能力。
 
-✨ **核心功能**
-- 🎥 一键开始/停止页面录制
-- 📊 完整记录页面交互（鼠标、键盘、滚动等）
-- 🎬 逼真回放录制内容
-- 💾 自动保存至浏览器存储
-- 📝 录制记录管理（查看、删除）
+## 主要特性
 
-⚙️ **技术特点**
-- 支持大容量录制数据存储（IndexedDB）
-- 实时录制 & 异步存储架构
-- 响应式设计，支持左右面板调整
-- 优雅的 UI 界面
+- 一键开始/停止录制，支持当前活动标签页状态同步
+- rrweb 事件流录制与本地回放
+- 录制列表管理：查看、删除、下载 JSON
+- 记录存储于 IndexedDB，离线可用
+- Plasmo 架构：弹窗、内容脚本、Service Worker、Options 页面分层清晰
 
-## 应用架构图
+## 架构与数据流
 
-参见架构图源文件：
-[assets/zhaojing.drawio](./assets/zhaojing.drawio)
+1) 弹窗页 [src/popup.tsx](src/popup.tsx) 向当前标签的内容脚本发送 `GET`/`SET` 消息以查询或切换录制状态。
+2) 内容脚本 [src/contents/plasmo.ts](src/contents/plasmo.ts) 使用 rrweb 录制事件流，收到 `SET` 时启动/停止，停止后将 `{timestamp,url,records,duration}` 通过 `SAVE_RECORDING` 消息发给背景。
+3) Service Worker [src/background.ts](src/background.ts) 接收 `SAVE_RECORDING`，调用 [src/lib/indexeddb.ts](src/lib/indexeddb.ts) 将记录写入 IndexedDB。
+4) Options 页面 [src/options.tsx](src/options.tsx) 读取 IndexedDB 记录，提供列表、删除、下载，并通过 [src/components/RRWebPlayer.tsx](src/components/RRWebPlayer.tsx) 回放。
 
-提示：如需在 README 中直接展示为图片，请在 Draw.io 内将该文件导出为 PNG/SVG 并保存为 `assets/zhaojing.png` 或 `assets/zhaojing.svg`，然后在此处插入：
-
-![应用架构图](./assets/zhaojing.png)
-
-## 项目结构
-
-```
-src/
-├── popup.tsx              # Popup 页面 - 控制录制
-├── options.tsx            # Options 页面 - 查看录制记录
-├── background.ts          # Background 脚本 - 处理消息和存储
-├── contents/
-│   └── plasmo.ts         # Content Script - 网页注入，进行录制
-├── components/
-│   ├── RRWebPlayer.tsx   # rrweb 播放器组件
-│   └── ui/               # shadcn/ui 组件库
-├── lib/
-│   ├── indexeddb.ts      # IndexedDB 操作库
-│   └── utils.ts          # 工具函数
-├── types.d.ts            # TypeScript 类型定义
-└── style.css             # 全局样式
-```
+流程概念：弹窗控制 → 内容脚本录制 → 背景存储 → Options 回放。
 
 ## 快速开始
+
+### 环境要求
+- Node.js 18+
+- pnpm 8+
 
 ### 安装依赖
 
@@ -53,189 +32,47 @@ src/
 pnpm install
 ```
 
-### 开发模式
+### 开发调试
 
 ```bash
 pnpm dev
 ```
 
-这会启动开发服务器，扩展会自动加载到 Chrome 中。
+Plasmo 会启动开发服务器并输出浏览器扩展的加载路径。按照终端提示在浏览器中加载打包目录。
 
-### 生产构建
+### 构建发布
 
 ```bash
 pnpm build
-```
-
-### 打包扩展
-
-```bash
+# 或打包为可分发压缩包
 pnpm package
 ```
 
-## 使用方法
+## 使用指南
 
-### 1. 录制页面操作
+1) 在浏览器中加载扩展后，点击工具栏图标打开弹窗。
+2) 点击“开始录制”后，内容脚本开始记录当前页 rrweb 事件；再次点击会停止并保存。
+3) 点击“查看记录”跳转 Options 页面，可在左侧列表选择记录，右侧回放。
+4) 在列表中可删除或下载记录（JSON 文件包含事件流与元数据）。
 
-- 点击扩展图标打开 Popup
-- 点击"开始录制"按钮
-- 在网页上执行操作（点击、输入、滚动等）
-- 点击"停止录制"完成录制
-- 录制数据自动保存
+## 代码结构概览
 
-### 2. 查看录制记录
+- 弹窗控制： [src/popup.tsx](src/popup.tsx)
+- 内容录制： [src/contents/plasmo.ts](src/contents/plasmo.ts)
+- 背景存储： [src/background.ts](src/background.ts)
+- 回放管理： [src/options.tsx](src/options.tsx)
+- 数据持久化： [src/lib/indexeddb.ts](src/lib/indexeddb.ts)
+- 工具函数： [src/lib/utils.ts](src/lib/utils.ts)
+- UI 组件： [src/components](src/components)
 
-- 在 Popup 中点击"查看录制记录"按钮
-- 进入录制记录管理页面
-- 左侧显示所有录制列表，包括：
-  - 录制时间
-  - 录制网址
-  - 录制时长
-- 点击任一记录，右侧自动播放该录制
+## 开发说明
 
-### 3. 管理录制
+- 消息协议：弹窗/内容脚本使用 `Action` 类型 `GET` | `SET` 查询或切换录制状态；内容脚本向背景发送 `SAVE_RECORDING` 持久化。
+- 录制实现：rrweb `record()` 采集事件流，停止时计算 `duration` 并清空缓存。
+- 存储模型：IndexedDB 库 `zhaojing-records`，表 `recordings`，键自增，字段见 `Recording` 接口。
+- UI 与样式：Tailwind 与 shadcn/ui 组件集，部分自定义样式位于 [src/style](src/style).
 
-- 选中任意记录可预览
-- 点击"删除"按钮移除不需要的录制
+## 参考
 
-## 架构说明
+- 架构图源文件： [assets/zhaojing.drawio](assets/zhaojing.drawio)
 
-### 数据流
-
-```
-网页 (Content Script)
-    ↓ [录制操作数据]
-Background Script
-    ↓ [保存数据]
-扩展 IndexedDB
-    ↓ [读取数据]
-Options 页面 (展示回放)
-```
-
-### 关键模块
-
-| 模块 | 职责 | 说明 |
-|------|------|------|
-| Content Script | 网页录制 | 使用 rrweb 在网页中录制操作 |
-| Background | 消息处理 & 存储 | 接收 CS 消息，保存到 IndexedDB |
-| Popup | 用户交互 | 控制录制开始/停止 |
-| Options | 记录管理 | 查看、播放、删除录制 |
-| IndexedDB | 数据持久化 | 大容量录制数据存储 |
-
-## 技术栈
-
-| 技术 | 用途 |
-|------|------|
-| React 18 | UI 框架 |
-| TypeScript | 类型系统 |
-| Plasmo | Chrome 扩展框架 |
-| rrweb | 页面录制库 |
-| rrweb-player | 录制回放 |
-| shadcn/ui | 组件库 |
-| Tailwind CSS | 样式框架 |
-| IndexedDB | 数据存储 |
-
-## 扩展权限
-
-```json
-{
-  "permissions": ["tabs", "storage"],
-  "host_permissions": ["https://*/*"]
-}
-```
-
-- **tabs**: 获取当前标签页信息
-- **storage**: 使用 chrome.storage API
-- **host_permissions**: 在所有网站上运行 content script
-
-## API 接口
-
-### Content Script → Background
-
-**消息格式：**
-```typescript
-{
-  action: "SAVE_RECORDING",
-  data: {
-    timestamp: number,
-    url: string,
-    records: EventWithTime[],
-    duration: number
-  }
-}
-```
-
-### IndexedDB 操作
-
-```typescript
-// 获取所有录制
-const recordings = await getAllRecordings();
-
-// 获取单个录制
-const recording = await getRecording(id);
-
-// 删除录制
-await deleteRecording(id);
-
-// 保存录制（由 background 调用）
-await saveRecording(recordingData);
-```
-
-## 常见问题
-
-### Q: 录制数据存储在哪里？
-A: 存储在浏览器的 IndexedDB 中（扩展专用），容量很大（通常几百 MB）。
-
-### Q: 支持跨域录制吗？
-A: 支持，会录制指定标签页的所有网站操作。
-
-### Q: 播放器支持哪些操作？
-A: 支持播放、暂停、速度调整等基本操作（由 rrweb-player 提供）。
-
-### Q: 可以导出录制吗？
-A: 当前版本支持在页面查看。可在控制台中导出 JSON 数据。
-
-## 开发指南
-
-### 添加新功能
-
-1. **修改 Content Script** (`src/contents/plasmo.ts`)
-   - 修改录制逻辑
-   - 修改消息格式需同步更新 Background
-
-2. **修改 Background** (`src/background.ts`)
-   - 修改存储逻辑
-   - 添加新的消息处理
-
-3. **修改 UI**
-   - Popup: `src/popup.tsx`
-   - Options: `src/options.tsx`
-   - 新建组件放在 `src/components/`
-
-### 调试
-
-- **打开扩展控制台**: `chrome://extensions` → 选择扩展 → 检查视图
-- **Content Script 日志**: 在网页控制台查看
-- **Background 日志**: 在扩展控制台查看
-- **Popup/Options 日志**: 在对应页面的开发者工具查看
-
-## 性能优化建议
-
-- 长时间录制可能消耗大量内存，建议定期停止和重新开始
-- 录制高交互的应用（游戏、动画等）时数据量最大
-- 定期删除不需要的录制以释放空间
-
-## 许可证
-
-MIT
-
-## 作者
-
-pinkdopeybug@163.com
-
-## 更新日志
-
-### v0.0.1
-- 初始版本
-- 基础录制和回放功能
-- 录制记录管理

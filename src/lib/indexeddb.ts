@@ -4,7 +4,7 @@ const DB_NAME = "zhaojing-records";
 const STORE_NAME = "recordings";
 
 export interface Recording {
-  id?: number;
+  id: number;
   timestamp: number;
   url: string;
   records: eventWithTime[];
