@@ -5,6 +5,7 @@ import {
   getAllRecordings,
   deleteRecording,
   type Recording,
+  saveRecording,
 } from "~lib/indexeddb";
 import "@/style/style.css";
 import "@/style/options.css";
@@ -16,24 +17,22 @@ import {
 import RecordList from "~components/RecordList";
 import { Toaster } from "~components/ui/sonner";
 import { formatDate } from "~lib/utils";
+import { Input } from "~components/ui/input";
+import { Label } from "~components/ui/label";
+import { toast } from "sonner";
 
 function IndexOptions() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [selectedRecording, setSelectedRecording] = useState<Recording | null>(
     null
   );
-  const [loading, setLoading] = useState(true);
-
   const loadRecordings = async () => {
-    setLoading(true);
     try {
       const data = await getAllRecordings();
       console.log("获取到的录制记录:", data);
       setRecordings(data.reverse()); // 最新的在前面
     } catch (error) {
       console.error("加载录制记录失败:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -55,7 +54,7 @@ function IndexOptions() {
   };
 
   const handleDownload = async (record: Recording) => {
-    const name = `record_${record.id}_${new Date(record.timestamp)
+    const name = `record_${record.url}_${new Date(record.timestamp)
       .toISOString()
       .replace(/[:.]/g, "-")}.json`;
     const blob = new Blob(
@@ -84,6 +83,48 @@ function IndexOptions() {
     URL.revokeObjectURL(url);
   };
 
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const jsonData = JSON.parse(text);
+
+      // 验证必要字段
+      if (!jsonData.timestamp || !jsonData.url || !jsonData.records) {
+        console.error("上传的文件格式不正确");
+        return;
+      }
+
+      // 创建新记录（不包含ID，由数据库生成）
+      const newRecord = {
+        timestamp: jsonData.timestamp,
+        url: jsonData.url,
+        duration: jsonData.duration,
+        records: jsonData.records,
+      };
+
+      // 保存到IndexedDB
+      await saveRecording(newRecord);
+
+      // 重新加载录制列表
+      await loadRecordings();
+
+      // 不需要手动设置selectedRecording，loadRecordings后recordings已更新
+      // 如果想选中新记录，可以基于时间戳等信息查找最新记录
+      // 这里简化处理：不清除选择，让用户自行选择
+
+      toast.success(`${file.name}上传成功`);
+    } catch (error) {
+      console.error("上传失败:", error);
+      toast.error(`${file.name}上传失败`);
+    } finally {
+    }
+  };
+
   return (
     <>
       <ResizablePanelGroup className="border rounded-lg w-full h-full">
@@ -96,6 +137,17 @@ function IndexOptions() {
               <h4 className="text-xl font-semibold tracking-tight text-slate-900">
                 录制列表
               </h4>
+            </div>
+          </div>
+          <div className="m-4">
+            <div className="grid w-full max-w-sm items-center gap-3">
+              <Label htmlFor="json">上传记录文件</Label>
+              <Input
+                id="json"
+                type="file"
+                accept=".json"
+                onChange={handleFileUpload}
+              />
             </div>
           </div>
           <div className="flex-1 min-h-0 p-2">
